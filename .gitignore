@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Environment — never commit secrets
+.env
+backend/.env
+frontend/.env.local
+frontend/.env*.local
+
+# Uploads / generated files
+backend/uploads/
+uploads/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Logs / Celery
+*.log
+celerybeat-schedule
+celerybeat.pid
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
