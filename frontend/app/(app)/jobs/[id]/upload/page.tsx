@@ -3,10 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, CloudUpload, FileText, CheckCircle2, XCircle, Loader2, Brain, ShieldCheck, Star, Users } from "lucide-react";
 import api from "@/lib/api";
 
 interface UploadedFile {
@@ -119,88 +117,103 @@ export default function UploadPage() {
     setUploading(false);
   };
 
-  const statusBadge = (f: UploadedFile) => {
-    if (f.status === "pending") return <span className="text-xs text-gray-400">Pending</span>;
-    if (f.status === "uploading") return <span className="text-xs text-blue-500 animate-pulse">Uploading...</span>;
-    if (f.status === "processing") return <span className="text-xs text-yellow-500 animate-pulse">Processing...</span>;
-    if (f.status === "done") return (
-      <span className="text-xs text-green-600 font-semibold">
-        Done {f.score !== undefined ? `— Score: ${f.score.toFixed(1)}` : ""}
-      </span>
-    );
-    return <span className="text-xs text-red-500">{f.error ?? "Error"}</span>;
+  const fileStatusUI = (f: UploadedFile) => {
+    if (f.status === "pending")    return { icon: <FileText className="w-4 h-4 text-gray-400" />, label: "Ready", cls: "text-gray-400" };
+    if (f.status === "uploading")  return { icon: <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />, label: "Uploading…", cls: "text-indigo-600" };
+    if (f.status === "processing") return { icon: <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />, label: "AI Processing…", cls: "text-amber-600" };
+    if (f.status === "done")       return { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, label: `Score: ${f.score?.toFixed(1) ?? "—"}`, cls: "text-emerald-600 font-semibold" };
+    return { icon: <XCircle className="w-4 h-4 text-red-500" />, label: f.error ?? "Error", cls: "text-red-500" };
   };
 
   const hasPending = files.some((f) => f.status === "pending");
+  const doneCount  = files.filter((f) => f.status === "done").length;
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="sm" onClick={() => router.push("/jobs")}>← Back</Button>
-        <h1 className="text-2xl font-bold text-gray-900">Upload Resumes</h1>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <Button variant="ghost" size="sm" className="gap-1.5 text-gray-600" onClick={() => router.push("/jobs")}>
+          <ArrowLeft className="w-4 h-4" />Back
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Upload Resumes</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Drop files below — AI will screen them automatically</p>
+        </div>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-              isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
-            }`}
-          >
-            <input {...getInputProps()} />
-            <div className="text-4xl mb-3">📄</div>
-            <p className="text-gray-600 font-medium">
-              {isDragActive ? "Drop files here..." : "Drag & drop resumes here"}
-            </p>
-            <p className="text-sm text-gray-400 mt-1">PDF, DOC, DOCX — up to 10MB each</p>
-            <Button type="button" variant="outline" className="mt-4" size="sm">
-              Browse Files
-            </Button>
+      {/* Dropzone */}
+      <div {...getRootProps()} className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all mb-6 ${
+        isDragActive ? "border-indigo-500 bg-indigo-50 scale-[1.01]" : "border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/30"
+      }`}>
+        <input {...getInputProps()} />
+        <div className="py-16 text-center px-8">
+          <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center transition-colors ${isDragActive ? "bg-indigo-100" : "bg-gray-100"}`}>
+            <CloudUpload className={`w-8 h-8 transition-colors ${isDragActive ? "text-indigo-600" : "text-gray-400"}`} />
           </div>
-        </CardContent>
-      </Card>
+          <p className={`font-semibold text-base transition-colors ${isDragActive ? "text-indigo-700" : "text-gray-700"}`}>
+            {isDragActive ? "Drop your files here!" : "Drag & drop resumes here"}
+          </p>
+          <p className="text-sm text-gray-400 mt-1 mb-5">PDF, DOC, DOCX — up to 10 MB each · multiple files OK</p>
+          <Button type="button" variant="outline" size="sm" className="gap-2">
+            <FileText className="w-4 h-4" />Browse Files
+          </Button>
+        </div>
+      </div>
 
+      {/* File list */}
       {files.length > 0 && (
-        <Card className="mb-4">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Files ({files.length})</CardTitle>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={uploadAll} disabled={uploading || !hasPending}>
-                  {uploading ? "Uploading..." : "Upload All"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => router.push(`/jobs/${jobId}/candidates`)}>
-                  View Candidates
-                </Button>
-              </div>
+        <div className="bg-white rounded-2xl border border-gray-200 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div>
+              <p className="font-semibold text-gray-900">{files.length} file{files.length !== 1 ? "s" : ""}</p>
+              {doneCount > 0 && <p className="text-xs text-emerald-600 mt-0.5">{doneCount} scored ✓</p>}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {files.map((f, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{f.name}</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={uploadAll} disabled={uploading || !hasPending} className="gap-1.5">
+                {uploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading…</> : <><CloudUpload className="w-3.5 h-3.5" />Upload All</>}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => router.push(`/jobs/${jobId}/candidates`)} className="gap-1.5">
+                <Users className="w-3.5 h-3.5" />View Candidates
+              </Button>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {files.map((f, i) => {
+              const ui = fileStatusUI(f);
+              return (
+                <div key={i} className="flex items-center gap-3 px-5 py-3">
+                  {ui.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{f.name}</p>
                     <p className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</p>
                   </div>
-                  {statusBadge(f)}
+                  <span className={`text-xs ${ui.cls} shrink-0`}>{ui.label}</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-        <p className="font-medium mb-1">What happens after upload?</p>
-        <ol className="list-decimal list-inside space-y-1 text-blue-600">
-          <li>Resume text is extracted (PDF/DOCX parser)</li>
-          <li>AI agent extracts structured candidate data</li>
-          <li>Scoring agent computes match score (0–100)</li>
-          <li>Bias detection agent flags potential signals</li>
-          <li>Candidate appears in the ranked dashboard</li>
-        </ol>
+      {/* Pipeline explainer */}
+      <div className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-2xl p-5">
+        <p className="text-sm font-semibold text-indigo-900 mb-4">What happens after upload?</p>
+        <div className="space-y-3">
+          {[
+            { icon: FileText,    color: "bg-indigo-100 text-indigo-600", step: "1", text: "Text extracted from PDF / DOCX" },
+            { icon: Brain,       color: "bg-violet-100 text-violet-600", step: "2", text: "Gemma AI parses structured candidate data" },
+            { icon: Star,        color: "bg-amber-100 text-amber-600",   step: "3", text: "Match score computed 0–100 against JD" },
+            { icon: ShieldCheck, color: "bg-emerald-100 text-emerald-600", step: "4", text: "Bias signals detected & flagged" },
+            { icon: Users,       color: "bg-sky-100 text-sky-600",       step: "5", text: "Candidate ranked in dashboard" },
+          ].map(({ icon: Icon, color, step, text }) => (
+            <div key={step} className="flex items-center gap-3">
+              <div className={`w-7 h-7 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                <Icon className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-sm text-indigo-800">{text}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
