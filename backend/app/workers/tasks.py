@@ -10,17 +10,12 @@ ROUND_LABELS = {1: "Technical Screen", 2: "Technical Deep-Dive", 3: "Final Manag
 
 
 def run_async(coro):
-    """Run an async coroutine from a sync Celery task."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return asyncio.run(coro)
 
 
 @celery_app.task(name="app.workers.tasks.parse_resume_task", bind=True, max_retries=3)
 def parse_resume_task(self, candidate_id: str):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate, CandidateStatus
     from app.models.bias_flag import BiasFlag, BiasFlagType, BiasSeverity
     from app.services.resume_parser import extract_text
@@ -93,7 +88,7 @@ def parse_resume_task(self, candidate_id: str):
 
 @celery_app.task(name="app.workers.tasks.schedule_round_task")
 def schedule_round_task(candidate_id: str, round_number: int):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate
     from app.models.interviewer import Interviewer
     from app.models.round import InterviewRound, RoundStatus
@@ -178,7 +173,7 @@ def trigger_next_round_task(candidate_id: str, completed_round: int):
 
 @celery_app.task(name="app.workers.tasks.send_shortlist_email_task")
 def send_shortlist_email_task(candidate_id: str):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate
     from app.models.job import JobPosting
     from app.services.email_service import email_service
@@ -203,7 +198,7 @@ def send_shortlist_email_task(candidate_id: str):
 
 @celery_app.task(name="app.workers.tasks.send_rejection_email_task")
 def send_rejection_email_task(candidate_id: str):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate
     from app.models.job import JobPosting
     from app.services.email_service import email_service
@@ -228,7 +223,7 @@ def send_rejection_email_task(candidate_id: str):
 
 @celery_app.task(name="app.workers.tasks.send_interview_invite_task")
 def send_interview_invite_task(round_id: str):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate
     from app.models.interviewer import Interviewer
     from app.models.job import JobPosting
@@ -268,7 +263,7 @@ def send_interview_invite_task(round_id: str):
 
 @celery_app.task(name="app.workers.tasks.send_iv_assignment_task")
 def send_iv_assignment_task(round_id: str):
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.candidate import Candidate
     from app.models.interviewer import Interviewer
     from app.models.job import JobPosting
@@ -311,7 +306,7 @@ def send_iv_assignment_task(round_id: str):
 @celery_app.task(name="app.workers.tasks.feedback_reminder_task")
 def feedback_reminder_task():
     """Celery Beat task — runs every hour, reminds interviewers with overdue feedback."""
-    from app.core.database import AsyncSessionLocal
+    from app.core.database import CelerySessionLocal as AsyncSessionLocal
     from app.models.feedback import InterviewFeedback
     from app.models.interviewer import Interviewer
     from app.models.candidate import Candidate
